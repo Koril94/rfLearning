@@ -1,4 +1,3 @@
-import multiprocessing
 import random;
 
 numberToGuess = random.randint(1, 100)
@@ -48,7 +47,6 @@ def getMinValue(l):
 
 
 def gameLoop(guessedNumber, min, max, numberToGuess):
-    # guessedNumber = int(input("Versuch: "))
     if guessedNumber == numberToGuess:
         return 10, 0, guessedNumber, min, max
     if guessedNumber < numberToGuess:
@@ -90,16 +88,9 @@ def game(episodes):
 
         tries.append(currentTries)
 
-    # print(sum(tries) / len(tries))
     return sum(tries) / len(tries)
-    # print(guesses)
 
-# p = multiprocessing.Pool(4)
-# # p.apply(game, args=[5000])
-
-
-for i in range(10):
-    print(game(50000))
+game(50000)
 
 outFile = open("qTable.txt", "w")
 for row in qTable:
@@ -108,6 +99,3 @@ for row in qTable:
     if maxValue != minValue:
         outFile.write(str(row) + " " + str(qTable[row]) + "\n")
 outFile.close()
-
-
-
