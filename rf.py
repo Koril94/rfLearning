@@ -1,22 +1,27 @@
-import random;
+import math
+import multiprocessing
+import random
+import time
+import json
 
 numberToGuess = random.randint(1, 100)
 actions = [i for i in range(100)]
-alpha = 0.6
-gamma = 0.3
-greed = 0.75
+alpha = 0.7
+gamma = 0.4
+greed = 0.5
 
-qTable = {}
 
 def tupleToState(theTuple):
-    currentState, min, max = theTuple
-    return str(min).zfill(3) + str(max).zfill(3)  +str(currentState)
+    min, max = theTuple
+    return str(min).zfill(3) + str(max).zfill(3)
 
 def initQTable():
-    for state in (-1,1):
-        for min in range(1, 101):
-            for max in range(1, 101):
-                qTable[tupleToState((state,min,max))] = [0 for i in range(0,100)]
+    qTable = {}
+    for min in range(1, 101):
+        for max in range(1, 101):
+            qTable[tupleToState((min,max))] = [0 for i in range(0,100)]
+    return qTable
+
 
 def getMaxIndex(l):
     max = l[0]
@@ -47,38 +52,51 @@ def getMinValue(l):
 
 
 def gameLoop(guessedNumber, min, max, numberToGuess):
-    if guessedNumber == numberToGuess:
-        return 10, 0, guessedNumber, min, max
-    if guessedNumber < numberToGuess:
+    if guessedNumber < min or guessedNumber > max:
+        return -100, -1, guessedNumber, min, max
+    elif guessedNumber == numberToGuess:
+        return 100, 0, guessedNumber, min, max
+    elif guessedNumber < numberToGuess:
         if guessedNumber > min:
             min = guessedNumber
         return -1, -1, guessedNumber, min, max
-    if guessedNumber > numberToGuess:
+    elif guessedNumber > numberToGuess:
         if guessedNumber < max:
             max = guessedNumber
-        return -1, 1, guessedNumber, min, max
+        return -1, -1, guessedNumber, min, max
 
-def game(episodes):
-    initQTable()
+def game(episodes, qTable):
+    
     guesses = {}
     for i in range(100):
         guesses[i + 1] = 0
     tries = []
     for i in range(episodes):
+        if i > 25:
+            greed = 0.8
+        elif i > 100:
+            greed = 0.9
+        elif i > 1000:
+            greed = 0.95
+        else:
+            greed = 1
+
         numberToGuess = random.randint(1, 100)
-        reward, gameState, guessedNumber, min, max = gameLoop(random.randint(1,100), 1, 100, 50)
+        min = 1
+        max = 100
+        # reward, gameState, guessedNumber, min, max = gameLoop(50, min, max, numberToGuess)
+        gameState = "start"
         currentTries = 0
         while gameState != 0:
-            currentState = tupleToState((gameState, min, max))
-           
-            currentAction = getMaxIndex(qTable[currentState]) if random.random() < greed else random.randint(0, 99)
+            currentState = tupleToState((min, max))
+            currentAction = getMaxIndex(qTable[currentState]) if random.random() < greed  else random.randint(0, 99)
             currentGuess = currentAction + 1
             guesses[currentGuess] += 1
             reward, gameState, guessedNumber, min, max = gameLoop(currentGuess, min, max, numberToGuess)
 
             oldValue = qTable[currentState][currentAction]
             
-            maxNextValue = getMaxValue(qTable[tupleToState((gameState, min, max))]) if gameState != 0 else 200
+            maxNextValue = getMaxValue(qTable[tupleToState((min, max))]) if gameState != 0 else 100
 
             newValue = (1 - alpha) * oldValue + alpha * (reward + gamma * maxNextValue)
 
@@ -87,15 +105,37 @@ def game(episodes):
             currentTries += 1
 
         tries.append(currentTries)
+    if i == episodes - 1:
+        # print(qTable)
+        f = open("qTable.json", "w")
+        f.write(json.dumps(qTable))
+        f.close()
 
     return sum(tries) / len(tries)
 
-game(50000)
+def runGameAndGenerateOutput(loopCounter, qTable):
+    print(game(loopCounter, qTable), "Loopcounter:", loopCounter)
+    
 
-outFile = open("qTable.txt", "w")
-for row in qTable:
-    maxValue = getMaxValue(qTable[row])
-    minValue = getMinValue(qTable[row])
-    if maxValue != minValue:
-        outFile.write(str(row) + " " + str(qTable[row]) + "\n")
-outFile.close()
+    outFile = open("qTable{0}.txt".format(loopCounter), "w")
+    outFile2 = open("IntervalMax{0}.txt".format(loopCounter), "w")
+    for row in qTable:
+        maxValue = getMaxValue(qTable[row])
+        minValue = getMinValue(qTable[row])
+        if maxValue != minValue:
+            outFile2.write(row[0:3] + "-" + row[3::] + ":" + str(getMaxIndex(qTable[row]) + 1) + "\n")
+            outFile.write(str(row) + " " + str(qTable[row]) + "\n")
+    outFile.close()
+    outFile2.close()
+
+if __name__ == '__main__':
+    for i in range(100):
+        maxValue = 10000
+        tic = time.time()
+        try:
+            qTable = json.load(open('qTable.json', "r"))
+        except:
+            qTable = initQTable()
+        runGameAndGenerateOutput(maxValue, qTable)
+        tac = time.time()
+        print("{0}".format(tac - tic))
