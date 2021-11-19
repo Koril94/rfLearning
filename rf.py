@@ -8,7 +8,7 @@ numberToGuess = random.randint(1, 100)
 actions = [i for i in range(100)]
 alpha = 0.7
 gamma = 0.4
-greed = 0.5
+greed = 1
 
 
 def tupleToState(theTuple):
@@ -72,14 +72,14 @@ def game(episodes, qTable):
         guesses[i + 1] = 0
     tries = []
     for i in range(episodes):
-        if i > 25:
-            greed = 0.8
-        elif i > 100:
-            greed = 0.9
-        elif i > 1000:
-            greed = 0.95
-        else:
-            greed = 1
+        # if i > 25:
+        #     greed = 0.8
+        # elif i > 100:
+        #     greed = 0.9
+        # elif i > 1000:
+        #     greed = 0.95
+        # else:
+        #     greed = 1
 
         numberToGuess = random.randint(1, 100)
         min = 1
@@ -105,18 +105,15 @@ def game(episodes, qTable):
             currentTries += 1
 
         tries.append(currentTries)
-    if i == episodes - 1:
-        # print(qTable)
-        f = open("qTable.json", "w")
-        f.write(json.dumps(qTable))
-        f.close()
 
     return sum(tries) / len(tries)
 
-def runGameAndGenerateOutput(loopCounter, qTable):
-    print(game(loopCounter, qTable), "Loopcounter:", loopCounter)
+def runGame(loopCounter, qTable):
+    print(game(loopCounter, qTable))
+    return qTable
     
 
+def generateOutput(qTable, loopCounter):
     outFile = open("qTable{0}.txt".format(loopCounter), "w")
     outFile2 = open("IntervalMax{0}.txt".format(loopCounter), "w")
     for row in qTable:
@@ -127,15 +124,16 @@ def runGameAndGenerateOutput(loopCounter, qTable):
             outFile.write(str(row) + " " + str(qTable[row]) + "\n")
     outFile.close()
     outFile2.close()
+    f = open("qTable.json", "w")
+    f.write(json.dumps(qTable))
+    f.close()
 
 if __name__ == '__main__':
+    try:
+        qTable = json.load(open('qTable.json', "r"))
+    except:
+        qTable = initQTable()
     for i in range(100):
-        maxValue = 10000
-        tic = time.time()
-        try:
-            qTable = json.load(open('qTable.json', "r"))
-        except:
-            qTable = initQTable()
-        runGameAndGenerateOutput(maxValue, qTable)
-        tac = time.time()
-        print("{0}".format(tac - tic))
+        maxValue = 20000
+        qTable = runGame(maxValue, qTable)
+    generateOutput(qTable, maxValue)
